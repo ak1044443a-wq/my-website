@@ -14,7 +14,6 @@ def download():
     if not url:
         return jsonify({'error': 'URL nahi mila'}), 400
 
-    # cookies.txt ka path
     cookie_file = 'cookies.txt'
     
     ydl_opts = {
@@ -22,21 +21,34 @@ def download():
         'noplaylist': True,
         'cookiefile': cookie_file if os.path.exists(cookie_file) else None,
         'quiet': True,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+                'player_skip': ['webpage', 'configs'],
+            }
+        },
+        'nocheckcertificate': True,
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            video_url = info.get('url')
-            if not video_url:
-                # direct url ke liye format nikalna
-                formats = info.get('formats', [])
-                if formats:
-                    video_url = formats[-1]['url']
-            
+            # direct download link
+            download_url = None
+            if 'url' in info:
+                download_url = info['url']
+            elif 'formats' in info and info['formats']:
+                # best mp4 wala format dhoondo
+                for f in reversed(info['formats']):
+                    if f.get('ext') == 'mp4' and f.get('url'):
+                        download_url = f['url']
+                        break
+                if not download_url:
+                    download_url = info['formats'][-1]['url']
+
             return jsonify({
                 'title': info.get('title'),
-                'download_url': video_url,
+                'download_url': download_url,
                 'thumbnail': info.get('thumbnail')
             })
     except Exception as e:
