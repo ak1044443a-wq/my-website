@@ -8,9 +8,15 @@ app = Flask(__name__)
 def home():
     return render_template('index.html')
 
-@app.route('/download', methods=['POST'])
+@app.route('/download', methods=['POST', 'GET'])
 def download():
-    url = request.json.get('url')
+    # Form se aaye ya JSON se, dono handle karega
+    if request.method == 'GET':
+        return "Method not allowed, use POST", 405
+        
+    data = request.get_json(silent=True) or request.form
+    url = data.get('url')
+
     if not url:
         return jsonify({'error': 'No URL provided'}), 400
 
@@ -32,10 +38,16 @@ def download():
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
+            # Direct download link
+            direct_url = info.get('url')
+            # Agar direct url nahi to best format nikal lo
+            if not direct_url and info.get('formats'):
+                direct_url = info['formats'][-1]['url']
+                
             return jsonify({
                 'title': info.get('title'),
-                'url': info.get('url'),
-                'formats': info.get('formats')[-3:]
+                'url': direct_url,
+                'formats': info.get('formats', [])[-3:]
             })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
