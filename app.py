@@ -13,12 +13,12 @@ def download():
     url = request.json.get('url')
     if not url:
         return jsonify({'error': 'No URL provided'}), 400
-    
+
     ydl_opts = {
         'format': 'best[ext=mp4]/best',
         'quiet': True,
         'no_warnings': True,
-        www.youtube.com_cookies.txt
+        'cookiefile': 'www.youtube.com_cookies.txt',
         'extractor_args': {
             'youtube': {
                 'player_client': ['android', 'web']
@@ -28,7 +28,7 @@ def download():
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
     }
-    
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -41,4 +41,4 @@ def download():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
