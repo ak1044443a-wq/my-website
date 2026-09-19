@@ -17,34 +17,32 @@ def download():
     cookie_file = 'cookies.txt'
     
     ydl_opts = {
-        'format': 'best[ext=mp4]/best',
+        'format': 'best',
         'noplaylist': True,
         'cookiefile': cookie_file if os.path.exists(cookie_file) else None,
         'quiet': True,
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'web'],
-                'player_skip': ['webpage', 'configs'],
+                'player_client': ['android'],
             }
         },
-        'nocheckcertificate': True,
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            # direct download link
+            
             download_url = None
-            if 'url' in info:
-                download_url = info['url']
-            elif 'formats' in info and info['formats']:
-                # best mp4 wala format dhoondo
-                for f in reversed(info['formats']):
-                    if f.get('ext') == 'mp4' and f.get('url'):
-                        download_url = f['url']
-                        break
-                if not download_url:
-                    download_url = info['formats'][-1]['url']
+            if info.get('formats'):
+                # sabse acchi quality wala format lo
+                best = None
+                for f in info['formats']:
+                    if f.get('url'):
+                        best = f
+                if best:
+                    download_url = best['url']
+            else:
+                download_url = info.get('url')
 
             return jsonify({
                 'title': info.get('title'),
