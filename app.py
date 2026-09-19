@@ -1,37 +1,41 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, request, render_template_string
 import yt_dlp
-import os, uuid
+import os
 
 app = Flask(__name__)
 
-@app.route('/')
+HTML = """
+<form method="post">
+<input name="url" placeholder="YouTube link dalo" style="width:80%;padding:10px">
+<button>Download</button>
+</form>
+<p>{{msg}}</p>
+"""
+
+@app.route("/", methods=["GET", "POST"])
 def home():
-    return render_template('index.html')
+    msg = ""
+    if request.method == "POST":
+        url = request.form.get("url")
+        try:
+            ydl_opts = {
+                'format': 'best[ext=mp4]/best',
+                'outtmpl': '/tmp/%(title)s.%(ext)s',
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android', 'web'],
+                        'player_skip': ['webpage', 'configs']
+                    }
+                },
+                'nocheckcertificate': True,
+                'no_warnings': True,
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                msg = f"Ho gaya! File: {info['title']}"
+        except Exception as e:
+            msg = f"Error: {str(e)}"
+    return render_template_string(HTML, msg=msg)
 
-@app.route('/download', methods=['POST'])
-def download():
-    url = request.form.get('url') or request.form.get('uri')
-    if not url:
-        return "Link daal yrrr!"
-
-    filename = f"{uuid.uuid4()}.mp4"
-    os.makedirs("downloads", exist_ok=True)
-    filepath = os.path.join("downloads", filename)
-
-    options = {
-        'format': 'best[ext=mp4]/best',
-        'outtmpl': filepath,
-        'noplaylist': True,
-        'nocheckcertificate': True,
-        'geo_bypass': True,
-    }
-
-    try:
-        with yt_dlp.YoutubeDL(options) as ydl:
-            ydl.download([url])
-        return send_file(filepath, as_attachment=True, download_name="video.mp4")
-    except Exception as e:
-        return f"Error: {e}"
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
