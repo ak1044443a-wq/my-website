@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, render_template, jsonify
 import yt_dlp
 import os
 
@@ -6,30 +6,41 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Server is Live!"
+    return render_template('index.html')
 
-@app.route('/download', methods=['GET'])
+@app.route('/download', methods=['POST'])
 def download():
-    url = request.args.get('url')
+    url = request.form.get('url')
     if not url:
-        return jsonify({"error": "URL missing"}), 400
-    
-    cookie_file = "www.youtube.com_cookies.txt"
+        return jsonify({'error': 'URL nahi mila'}), 400
+
+    # cookies.txt ka path
+    cookie_file = 'cookies.txt'
     
     ydl_opts = {
-        'format': 'best',
+        'format': 'best[ext=mp4]/best',
+        'noplaylist': True,
+        'cookiefile': cookie_file if os.path.exists(cookie_file) else None,
         'quiet': True,
     }
-    
-    if os.path.exists(cookie_file):
-        ydl_opts['cookiefile'] = cookie_file
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            return jsonify({"title": info.get('title'), "url": info.get('url')})
+            video_url = info.get('url')
+            if not video_url:
+                # direct url ke liye format nikalna
+                formats = info.get('formats', [])
+                if formats:
+                    video_url = formats[-1]['url']
+            
+            return jsonify({
+                'title': info.get('title'),
+                'download_url': video_url,
+                'thumbnail': info.get('thumbnail')
+            })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run()
