@@ -4,34 +4,37 @@ import os
 
 app = Flask(__name__)
 
-HTML_PAGE = """
+HTML = """
 <!DOCTYPE html>
 <html>
-<head><title>YouTube Downloader</title>
+<head>
+<title>YT Downloader</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{font-family:Arial;text-align:center;padding:20px;background:#f5f5f5}
-input{width:80%;padding:12px;margin:10px;font-size:16px}
-button{padding:12px 20px;background:red;color:white;border:none;font-size:16px;border-radius:5px}
-#result{margin-top:20px}
+body{font-family:system-ui;text-align:center;padding:20px;background:#111;color:#fff}
+input{width:90%;max-width:400px;padding:14px;border-radius:10px;border:none;font-size:16px}
+button{padding:14px 24px;background:#ff0000;color:#fff;border:none;border-radius:10px;font-size:16px;margin-top:12px}
+img{border-radius:10px;margin-top:10px}
+.card{background:#222;padding:20px;border-radius:15px;margin-top:20px;display:inline-block}
 </style>
 </head>
 <body>
-<h2>🔴 YouTube Video Downloader</h2>
-<input id="url" placeholder="YouTube link paste karo...">
+<h2>🔴 YouTube Downloader</h2>
+<input id="url" placeholder="YouTube link yaha paste karo">
 <br>
-<button onclick="download()">Download</button>
-<div id="result"></div>
+<button onclick="go()">Download</button>
+<div id="r"></div>
 <script>
-async function download(){
- let url=document.getElementById('url').value;
- document.getElementById('result').innerHTML="Loading...";
- let form=new FormData(); form.append('url',url);
- let res=await fetch('/download',{method:'POST',body:form});
- let data=await res.json();
- if(data.error){document.getElementById('result').innerHTML="<p style=color:red>"+data.error+"</p>"}
+async function go(){
+ let u=document.getElementById('url').value;
+ if(!u){alert('Link daalo pehle');return;}
+ document.getElementById('r').innerHTML='<p>Loading...</p>';
+ let f=new FormData(); f.append('url',u);
+ let res=await fetch('/download',{method:'POST',body:f});
+ let d=await res.json();
+ if(d.error){document.getElementById('r').innerHTML='<p style=color:#ff6b6b>'+d.error+'</p>'}
  else{
-  document.getElementById('result').innerHTML=`<h3>${data.title}</h3><img src="${data.thumbnail}" width="300"><br><br><a href="${data.download_url}" target="_blank"><button>Click to Download Video</button></a>`;
+  document.getElementById('r').innerHTML=`<div class=card><h3>${d.title}</h3><img src="${d.thumbnail}" width="320"><br><br><a href="${d.download_url}" target="_blank"><button>⬇️ Download Now</button></a></div>`;
  }
 }
 </script>
@@ -41,32 +44,22 @@ async function download(){
 
 @app.route('/')
 def home():
-    return HTML_PAGE
+    return HTML
 
 @app.route('/download', methods=['POST'])
-def download():
+def dl():
     url = request.form.get('url')
-    if not url:
-        return jsonify({'error': 'URL nahi mila'}), 400
-
-    cookie_file = 'cookies.txt'
-    ydl_opts = {
-        'noplaylist': True,
-        'cookiefile': cookie_file if os.path.exists(cookie_file) else None,
-        'quiet': True,
-        'extractor_args': {'youtube': {'player_client': ['android']}},
-    }
+    ydl_opts = {'noplaylist': True, 'quiet': True, 'extractor_args': {'youtube': {'player_client': ['android']}}}
+    # agar cookies.txt hai toh use karega
+    if os.path.exists('cookies.txt'):
+        ydl_opts['cookiefile'] = 'cookies.txt'
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            best_url = info.get('url')
-            if not best_url and info.get('formats'):
-                best_url = info['formats'][-1]['url']
-            return jsonify({
-                'title': info.get('title'),
-                'download_url': best_url,
-                'thumbnail': info.get('thumbnail')
-            })
+            best = info.get('url')
+            if not best and info.get('formats'):
+                best = info['formats'][-1]['url']
+            return jsonify({'title': info.get('title'), 'thumbnail': info.get('thumbnail'), 'download_url': best})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
