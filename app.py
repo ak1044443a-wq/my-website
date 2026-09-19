@@ -18,7 +18,7 @@ def download():
         'format': 'best[ext=mp4]/best',
         'quiet': True,
         'no_warnings': True,
-        'cookiefile': 'youtube.com_cookies.txt',
+        www.youtube.com_cookies.txt
         'extractor_args': {
             'youtube': {
                 'player_client': ['android', 'web']
